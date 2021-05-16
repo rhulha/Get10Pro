@@ -21,134 +21,154 @@ canvas {
 <body bgcolor="black">
 <canvas id="c"></canvas>
 <script>
+// GET 10 PRO copyright 2015 Raymond Hulha
 var bgcolors = ['', 'LawnGreen', 'DodgerBlue', 'orange', 'Tomato', 'DarkGreen',
                 'DarkViolet', 'lightblue', 'red', 'blue', 'green', 'white'];
 var fgcolors = ['', 'DarkGreen', 'DarkBlue', 'red', '#ff9e9e', 'LawnGreen',
                 'Plum', 'Plum', 'Plum', 'Plum', 'Plum', 'Plum'];
 
-var xTiles=5;
-var yTiles=7;
-
-if( location.search.length > 1) {
-	xTiles=location.search.split(/\D/)[1];
-	yTiles=location.search.split(/\D/)[2];
-}
-				
-var can = document.getElementById('c');
-can.style.width=window.innerWidth+"px";
-can.style.height=window.innerHeight+"px";
-//can.style.margin= "-"+(minDim/2)+"px 0 0 -"+(minDim/2)+"px";
-var ctx = can.getContext('2d');
-var w = can.width = can.clientWidth;
-var h = can.height = can.clientHeight;
-var tw = Math.floor(w/xTiles);
-var th = Math.floor(h/yTiles);
-
+var xTiles=location.search.split(/\D/)[1]||5;
+var yTiles=location.search.split(/\D/)[2]||7;
+var canvas = document.getElementById('c');
+canvas.style.width=window.innerWidth+"px";
+canvas.style.height=window.innerHeight+"px";
+//canvas.style.margin= "-"+(minDim/2)+"px 0 0 -"+(minDim/2)+"px";
+var ctx = canvas.getContext('2d');
+var w = canvas.width = canvas.clientWidth;
+var h = canvas.height = canvas.clientHeight;
+var tw = Math.floor(w/xTiles); // tile width
+var th = Math.floor(h/yTiles); // tile height
+ctx.textAlign = 'center';
+ctx.font= th/2 + "pt Comic Sans MS";
 var board = [];
+var requestAnimationFrameID;
+var gameOver=false;
 
+function newTile(nr) {
+	return {
+		nr: nr || Math.ceil(Math.random()*4),
+		offset: 0, // offset in the y axis for down dropping tiles.
+		distance: 0 // total distance to drop
+	};
+}
+	
 for(var x=0; x<xTiles; x++) {
     board[x] = [];
     for(var y=0; y<yTiles; y++) {
-        board[x][y] = Math.ceil(Math.random()*4);
+        board[x][y] = newTile();
     }
 }
 
-function removeBoxAndNeighbors(x, y, nr) {
-    if(x<0 || x>xTiles-1 || y<0 || y>yTiles-1 || !board[x][y] || board[x][y] != nr)
+drawBoard();
+function drawBoard(elapsed) {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, w, h);
+	var countAnimated=0;
+    for(var x=0; x<xTiles; x++) {
+        for(var y=0; y<yTiles; y++) {
+            var t = board[x][y];
+			var offset = Math.max(t.offset,0);
+			if( offset > 0) {
+				t.offset -= (t.distance/10)*(elapsed/16.666);
+				countAnimated++;
+			}
+            ctx.fillStyle = bgcolors[t.nr];
+            ctx.fillRect(x*tw+2, y*th-offset+2, tw-2, th-2);
+            ctx.fillStyle = fgcolors[t.nr];
+            ctx.fillText(""+t.nr,x*tw+tw/2,(y*th+th*0.75)-offset);
+        }
+    }
+	if(gameOver) {
+		ctx.font= h/10 + "pt Comic Sans MS";
+        ctx.fillStyle="white";
+		ctx.fillText("Game Over",w/2+2,h/2+2);
+        ctx.fillStyle="blue";
+		ctx.fillText("Game Over",w/2,h/2);
+	}
+	if(countAnimated==0)
+		cancelAnimationFrame(requestAnimationFrameID);
+}
+
+var lastTime=0;
+function animate(time) {
+	requestAnimationFrameID=requestAnimationFrame(animate);
+	if( time-lastTime < 1300) // skip long frame times
+		drawBoard(time-lastTime);
+	lastTime=time;
+}
+
+function removeTileAndNeighbors(x, y, nr) {
+    if(x<0 || x>xTiles-1 || y<0 || y>yTiles-1 || !board[x][y] || board[x][y].nr != nr)
         return 0;
     var count=1;
     board[x][y] = undefined;
-    count += removeBoxAndNeighbors(x+1,y,nr);
-    count += removeBoxAndNeighbors(x-1,y,nr);
-    count += removeBoxAndNeighbors(x,y+1,nr);
-    count += removeBoxAndNeighbors(x,y-1,nr);
+    count += removeTileAndNeighbors(x+1,y,nr);
+    count += removeTileAndNeighbors(x-1,y,nr);
+    count += removeTileAndNeighbors(x,y+1,nr);
+    count += removeTileAndNeighbors(x,y-1,nr);
     return count;
 }
 
-var clickCount=0;
-
-var click = function(event) {
-	clickCount++;
+canvas.addEventListener('mousedown', function(event) {
 	var ex = event.offsetX || event.layerX;
 	var ey = event.offsetY || event.layerY;
     var x = (ex-(ex%tw))/tw;
     var y = (ey-(ey%th))/th;
-    var nr = board[x][y];
-    if( removeBoxAndNeighbors(x, y, nr) === 1) {
-        board[x][y] = nr; // if we only clicked on one tile, we restore it, This approach keeps removeBoxAndNeighbors simpler.
-    } else {
-		board[x][y] = nr+1;
+    var nr = board[x][y].nr;
+    if( removeTileAndNeighbors(x, y, nr) === 1) {
+        board[x][y] = newTile(nr); // if we only clicked on one tile, we restore it, This approach keeps removeTileAndNeighbors simpler.
+		return;
 	}
+	board[x][y] = newTile(nr+1);
 	compactBoard();
-    drawBoard();
-	if(checkEnd())
-		alert("no more moves possible");
-};
+	animate();
+	gameOver=checkEnd();
+});	
 
-can.addEventListener('mousedown', click);	
-//document.addEventListener('touchstart', click);	
-
-function compactBoard() {
-    for(var x=0; x<xTiles; x++) {
-        for(var y=0; y<yTiles; y++) {
-            var tile = board[x][y];
-            if(!tile) {
-				for(var r=y; r>0; r--) {
-					board[x][r] = board[x][r-1];
-				}
-				board[x][0] = Math.ceil(Math.random()*4);
-			}
-        }
-    }
+function countMissingBelow(x,ystart) {
+	return board[x].reduce(function(p,c,i){return (i>ystart)&&!c?p+1:p;},0);
 }
 
-function drawBoard() {
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, w, h);
-    for(var x=0; x<xTiles; x++) {
-        for(var y=0; y<yTiles; y++) {
-            var t = board[x][y];
-            if(!t)
-                continue;
-            ctx.beginPath();
-            ctx.rect(x*tw, y*th, tw, th);
-            ctx.fillStyle = bgcolors[t];
-            ctx.fill();
-            ctx.lineWidth = 0;
-            ctx.strokeStyle = 'black';
-            ctx.stroke();
-            
-            var f = th/2;
-            ctx.font= f + "pt Comic Sans MS";
-            ctx.fillStyle=fgcolors[t];
-            ctx.textAlign = 'center';
-            //var metrics = context.measureText("1");
-            ctx.fillText(""+t,x*tw+tw/2,y*th+th/2+f/2);
-        }
-    }
-    //ctx.fillText(""+clickCount,120,120);
+function moveDown(tile, distanceInTiles) { // schedule tiles to move down over time
+	tile.offset = distanceInTiles*th;
+	tile.distance = distanceInTiles*th;
+	return tile;
+}
+
+function compactBoard() {
+	for(var x=0; x<xTiles; x++) {
+		for(var y=yTiles-1; y>=0; y--) {
+			if(board[x][y]) {
+				var m = countMissingBelow(x,y);
+				if( m > 0 ) {
+					board[x][y+m] = moveDown( board[x][y], m);
+					board[x][y] = undefined;
+				}
+			}
+		}
+		for(var i=0, m = countMissingBelow(x,-1); i<m; i++) {
+			board[x][-1+m-i] = moveDown( newTile(), m); // spawn new blocks for all that got removed
+		}
+	}
 }
 
 function getNr(x,y) {
-	return board[x] && board[x][y];
+	return board[x] && board[x][y] && board[x][y].nr;
 }
 
 function checkEnd() {
     for(var x=0; x<xTiles; x++) {
         for(var y=0; y<yTiles; y++) {
-            var tile = board[x][y];
-			if( tile == getNr(x+1,y)
-			||  tile == getNr(x-1,y)
-			||  tile == getNr(x,y+1)
-			||  tile == getNr(x,y-1))
+            var nr = board[x][y].nr;
+			if( nr == getNr(x+1,y)
+			||  nr == getNr(x-1,y)
+			||  nr == getNr(x,y+1)
+			||  nr == getNr(x,y-1))
 				return false;
 		}
 	}
 	return true;
 }
-
-drawBoard();
 </script>
 </body>
-
 </html>
