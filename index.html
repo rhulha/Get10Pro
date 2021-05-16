@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Get10 Pro</title>
+<style>
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+canvas {
+	height:100vh;
+    width:100vh;
+}
+</style>
+</head>
+
+<body>
+<canvas id="c"></canvas>
+<script>
+var bgcolors = ['', 'LawnGreen', 'DodgerBlue', 'orange', 'Tomato', 'DarkGreen',
+                'DarkViolet', 'lightblue', 'red', 'blue', 'green', 'white'];
+var fgcolors = ['', 'DarkGreen', 'DarkBlue', 'red', '#ff9e9e', 'LawnGreen',
+                'Plum', 'Plum', 'Plum', 'Plum', 'Plum', 'Plum'];
+
+var can = document.getElementById('c');
+var ctx = can.getContext('2d');
+var w = can.width = can.clientWidth;
+var h = can.height = can.clientHeight;
+var tw = Math.floor(w/5);
+var th = Math.floor(h/5);
+
+var board = [];
+
+for(var x=0; x<5; x++) {
+    board[x] = [];
+    for(var y=0; y<5; y++) {
+        board[x][y] = Math.ceil(Math.random()*4);
+    }
+}
+
+function removeBoxAndNeighbors(x, y, nr) {
+    if(x<0 || x>4 || y<0 || y>4 || !board[x][y] || board[x][y] != nr)
+        return 0;
+    var count=1;
+    board[x][y] = undefined;
+    count += removeBoxAndNeighbors(x+1,y,nr);
+    count += removeBoxAndNeighbors(x-1,y,nr);
+    count += removeBoxAndNeighbors(x,y+1,nr);
+    count += removeBoxAndNeighbors(x,y-1,nr);
+    return count;
+}
+
+var clickCount=0;
+
+var click = function(event) {
+	clickCount++;
+    var x = (event.pageX-(event.pageX%tw))/tw;
+    var y = (event.pageY-(event.pageY%th))/th;
+    var nr = board[x][y];
+    if( removeBoxAndNeighbors(x, y, nr) === 1) {
+        board[x][y] = nr; // if we only clicked on one tile, we restore it, This approach keeps removeBoxAndNeighbors simpler.
+    } else {
+		board[x][y] = nr+1;
+	}
+	compactBoard();
+    drawBoard();
+};
+
+document.addEventListener('mousedown', click);	
+//document.addEventListener('touchstart', click);	
+
+function compactBoard() {
+    for(var x=0; x<5; x++) {
+        for(var y=0; y<5; y++) {
+            var tile = board[x][y];
+            if(!tile) {
+				for(var r=y; r>0; r--) {
+					board[x][r] = board[x][r-1];
+				}
+				board[x][0] = Math.ceil(Math.random()*4);
+			}
+        }
+    }
+}
+
+function drawBoard() {
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, w, h);
+    for(var x=0; x<5; x++) {
+        for(var y=0; y<5; y++) {
+            var t = board[x][y];
+            if(!t)
+                continue;
+            ctx.beginPath();
+            ctx.rect(x*tw, y*th, tw, th);
+            ctx.fillStyle = bgcolors[t];
+            ctx.fill();
+            ctx.lineWidth = 0;
+            ctx.strokeStyle = 'black';
+            ctx.stroke();
+            
+            var f = th/2;
+            ctx.font= f + "pt Comic Sans MS";
+            ctx.fillStyle=fgcolors[t];
+            ctx.textAlign = 'center';
+            //var metrics = context.measureText("1");
+            ctx.fillText(""+t,x*tw+tw/2,y*th+th/2+f/2);
+        }
+    }
+    //ctx.fillText(""+clickCount,120,120);
+}
+
+drawBoard();
+</script>
+</body>
+
+</html>
