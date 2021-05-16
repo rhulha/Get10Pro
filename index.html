@@ -11,13 +11,14 @@ html, body {
   margin: 0;
 }
 canvas {
-	height:100vh;
-    width:100vh;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 </style>
 </head>
 
-<body>
+<body bgcolor="black">
 <canvas id="c"></canvas>
 <script>
 var bgcolors = ['', 'LawnGreen', 'DodgerBlue', 'orange', 'Tomato', 'DarkGreen',
@@ -25,24 +26,35 @@ var bgcolors = ['', 'LawnGreen', 'DodgerBlue', 'orange', 'Tomato', 'DarkGreen',
 var fgcolors = ['', 'DarkGreen', 'DarkBlue', 'red', '#ff9e9e', 'LawnGreen',
                 'Plum', 'Plum', 'Plum', 'Plum', 'Plum', 'Plum'];
 
+var xTiles=5;
+var yTiles=7;
+
+if( location.search.length > 1) {
+	xTiles=location.search.split(/\D/)[1];
+	yTiles=location.search.split(/\D/)[2];
+}
+				
 var can = document.getElementById('c');
+can.style.width=window.innerWidth+"px";
+can.style.height=window.innerHeight+"px";
+//can.style.margin= "-"+(minDim/2)+"px 0 0 -"+(minDim/2)+"px";
 var ctx = can.getContext('2d');
 var w = can.width = can.clientWidth;
 var h = can.height = can.clientHeight;
-var tw = Math.floor(w/5);
-var th = Math.floor(h/5);
+var tw = Math.floor(w/xTiles);
+var th = Math.floor(h/yTiles);
 
 var board = [];
 
-for(var x=0; x<5; x++) {
+for(var x=0; x<xTiles; x++) {
     board[x] = [];
-    for(var y=0; y<5; y++) {
+    for(var y=0; y<yTiles; y++) {
         board[x][y] = Math.ceil(Math.random()*4);
     }
 }
 
 function removeBoxAndNeighbors(x, y, nr) {
-    if(x<0 || x>4 || y<0 || y>4 || !board[x][y] || board[x][y] != nr)
+    if(x<0 || x>xTiles-1 || y<0 || y>yTiles-1 || !board[x][y] || board[x][y] != nr)
         return 0;
     var count=1;
     board[x][y] = undefined;
@@ -57,8 +69,10 @@ var clickCount=0;
 
 var click = function(event) {
 	clickCount++;
-    var x = (event.pageX-(event.pageX%tw))/tw;
-    var y = (event.pageY-(event.pageY%th))/th;
+	var ex = event.offsetX || event.layerX;
+	var ey = event.offsetY || event.layerY;
+    var x = (ex-(ex%tw))/tw;
+    var y = (ey-(ey%th))/th;
     var nr = board[x][y];
     if( removeBoxAndNeighbors(x, y, nr) === 1) {
         board[x][y] = nr; // if we only clicked on one tile, we restore it, This approach keeps removeBoxAndNeighbors simpler.
@@ -67,14 +81,16 @@ var click = function(event) {
 	}
 	compactBoard();
     drawBoard();
+	if(checkEnd())
+		alert("no more moves possible");
 };
 
-document.addEventListener('mousedown', click);	
+can.addEventListener('mousedown', click);	
 //document.addEventListener('touchstart', click);	
 
 function compactBoard() {
-    for(var x=0; x<5; x++) {
-        for(var y=0; y<5; y++) {
+    for(var x=0; x<xTiles; x++) {
+        for(var y=0; y<yTiles; y++) {
             var tile = board[x][y];
             if(!tile) {
 				for(var r=y; r>0; r--) {
@@ -89,8 +105,8 @@ function compactBoard() {
 function drawBoard() {
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, w, h);
-    for(var x=0; x<5; x++) {
-        for(var y=0; y<5; y++) {
+    for(var x=0; x<xTiles; x++) {
+        for(var y=0; y<yTiles; y++) {
             var t = board[x][y];
             if(!t)
                 continue;
@@ -111,6 +127,24 @@ function drawBoard() {
         }
     }
     //ctx.fillText(""+clickCount,120,120);
+}
+
+function getNr(x,y) {
+	return board[x] && board[x][y];
+}
+
+function checkEnd() {
+    for(var x=0; x<xTiles; x++) {
+        for(var y=0; y<yTiles; y++) {
+            var tile = board[x][y];
+			if( tile == getNr(x+1,y)
+			||  tile == getNr(x-1,y)
+			||  tile == getNr(x,y+1)
+			||  tile == getNr(x,y-1))
+				return false;
+		}
+	}
+	return true;
 }
 
 drawBoard();
