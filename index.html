@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
 <title>Get10 Pro</title>
 <style>
 html, body {
@@ -22,6 +23,7 @@ canvas {
 <canvas id="c"></canvas>
 <script>
 // GET 10 PRO copyright 2015 Raymond Hulha
+document.addEventListener("DOMContentLoaded", function(event) {
 var bgcolors = ['', 'LawnGreen', 'DodgerBlue', 'orange', 'Tomato', 'DarkGreen',
                 'DarkViolet', 'lightblue', 'red', 'blue', 'green', 'white'];
 var fgcolors = ['', 'DarkGreen', 'DarkBlue', 'red', '#ff9e9e', 'LawnGreen',
@@ -30,16 +32,24 @@ var fgcolors = ['', 'DarkGreen', 'DarkBlue', 'red', '#ff9e9e', 'LawnGreen',
 var xTiles=location.search.split(/\D/)[1]||5;
 var yTiles=location.search.split(/\D/)[2]||7;
 var canvas = document.getElementById('c');
-canvas.style.width=window.innerWidth+"px";
-canvas.style.height=window.innerHeight+"px";
-//canvas.style.margin= "-"+(minDim/2)+"px 0 0 -"+(minDim/2)+"px";
 var ctx = canvas.getContext('2d');
-var w = canvas.width = canvas.clientWidth;
-var h = canvas.height = canvas.clientHeight;
-var tw = Math.floor(w/xTiles); // tile width
-var th = Math.floor(h/yTiles); // tile height
+var w;
+var h;
+var tw; // tile width
+var th; // tile height
+function setSize() {
+	//canvas.style.width=window.innerWidth+"px";
+	//canvas.style.height=window.innerHeight+"px";
+	w = canvas.width = canvas.clientWidth;
+	h = canvas.height = canvas.clientHeight;
+	tw = Math.floor(w/xTiles); // tile width
+	th = Math.floor(h/yTiles); // tile height
+	ctx.font= th/2 + "pt Comic Sans MS";
+}
+setSize();
+//setTimeout( function(){setSize();drawBoard();}, 1000);
+//canvas.style.margin= "-"+(minDim/2)+"px 0 0 -"+(minDim/2)+"px";
 ctx.textAlign = 'center';
-ctx.font= th/2 + "pt Comic Sans MS";
 var board = [];
 var requestAnimationFrameID;
 var gameOver=false;
@@ -169,6 +179,7 @@ function checkEnd() {
 	}
 	return true;
 }
+});
 </script>
 </body>
 </html>
