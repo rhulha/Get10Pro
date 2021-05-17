@@ -119,20 +119,34 @@ function removeTileAndNeighbors(x, y, nr) {
     return count;
 }
 
-canvas.addEventListener('mousedown', function(event) {
-	var ex = event.offsetX || event.layerX;
-	var ey = event.offsetY || event.layerY;
-    var x = (ex-(ex%tw))/tw;
-    var y = (ey-(ey%th))/th;
-    var nr = board[x][y].nr;
-    if( removeTileAndNeighbors(x, y, nr) === 1) {
-        board[x][y] = newTile(nr); // if we only clicked on one tile, we restore it, This approach keeps removeTileAndNeighbors simpler.
+function click(x,y) {
+  var nr = board[x][y].nr;
+  if( removeTileAndNeighbors(x, y, nr) === 1) {
+    board[x][y] = newTile(nr); // if we only clicked on one tile, we restore it, This approach keeps removeTileAndNeighbors simpler.
 		return;
 	}
 	board[x][y] = newTile(nr+1);
 	compactBoard();
 	animate();
 	gameOver=checkEnd();
+}
+
+canvas.addEventListener('mousedown', function(event) {
+	var ex = event.offsetX || event.layerX;
+	var ey = event.offsetY || event.layerY;
+  var x = (ex-(ex%tw))/tw;
+  var y = (ey-(ey%th))/th;
+  click(x,y);
+});	
+
+canvas.addEventListener('touchstart', function(evt) {
+  evt.preventDefault();
+  var touches = evt.changedTouches;
+	var ex = touches[0].pageX;
+	var ey = touches[0].pageY;
+  var x = (ex-(ex%tw))/tw;
+  var y = (ey-(ey%th))/th;
+  click(x,y);
 });	
 
 function countMissingBelow(x,ystart) {
