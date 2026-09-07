@@ -19,7 +19,9 @@ let h;
 let tw; // tile width
 let th; // tile height
 let board = [];
+let particles = [];
 let requestAnimationFrameID;
+let animating=false;
 let gameOver=false;
 let lastTime=0;
 
@@ -28,12 +30,31 @@ function easeInOutQuad(t) {
 	return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2, 2)/2;
 }
 
+// --- color helpers, used to build the glossy 3D tile/number shading ---
+let shadeCanvas;
+function colorToRgb(color) {
+	shadeCanvas = shadeCanvas || document.createElement('canvas');
+	shadeCanvas.width = shadeCanvas.height = 1;
+	const sctx = shadeCanvas.getContext('2d', { willReadFrequently: true });
+	sctx.fillStyle = color;
+	sctx.fillRect(0, 0, 1, 1);
+	const d = sctx.getImageData(0, 0, 1, 1).data;
+	return { r: d[0], g: d[1], b: d[2] };
+}
+function shade(color, amt) {
+	const { r, g, b } = colorToRgb(color);
+	const c = (v) => Math.max(0, Math.min(255, v + amt));
+	return `rgb(${c(r)},${c(g)},${c(b)})`;
+}
+const tileShades = bgcolors.map((c) => c ? { light: shade(c, 65), base: c, dark: shade(c, -55) } : null);
+const numberShades = fgcolors.map((c) => c ? shade(c, 90) : null);
+
 function setSize() {
 	w = canvas.width = canvas.clientWidth;
 	h = canvas.height = canvas.clientHeight;
 	tw = Math.floor(w/xTiles); // tile width
 	th = Math.floor(h/yTiles); // tile height
-	ctx.font= th/2 + "pt Comic Sans MS";
+	ctx.font= "bold " + th/2.2 + "pt Comic Sans MS";
 }
 
 function newTile(nr) {
@@ -43,6 +64,130 @@ function newTile(nr) {
 		distance: 0, // total distance to drop
 		elapsed: 0 // time spent dropping so far
 	};
+}
+
+function roundRectPath(x, y, rw, rh, r) {
+	ctx.beginPath();
+	ctx.moveTo(x+r, y);
+	ctx.arcTo(x+rw, y,    x+rw, y+rh, r);
+	ctx.arcTo(x+rw, y+rh, x,    y+rh, r);
+	ctx.arcTo(x,    y+rh, x,    y,    r);
+	ctx.arcTo(x,    y,    x+rw, y,    r);
+	ctx.closePath();
+}
+
+function drawTile(px, py, pw, ph, t) {
+	const r = Math.min(pw, ph) * 0.2;
+	const shades = tileShades[t.nr];
+
+	// drop shadow, gives the candy piece some lift off the board
+	ctx.save();
+	ctx.shadowColor = 'rgba(0,0,0,0.45)';
+	ctx.shadowBlur = 6;
+	ctx.shadowOffsetY = 4;
+	roundRectPath(px, py, pw, ph, r);
+	const grad = ctx.createLinearGradient(px, py, px, py+ph);
+	grad.addColorStop(0, shades.light);
+	grad.addColorStop(0.55, shades.base);
+	grad.addColorStop(1, shades.dark);
+	ctx.fillStyle = grad;
+	ctx.fill();
+	ctx.restore();
+
+	// glossy highlight across the top half, like a candy shell
+	ctx.save();
+	roundRectPath(px, py, pw, ph, r);
+	ctx.clip();
+	const gloss = ctx.createLinearGradient(px, py, px, py+ph*0.55);
+	gloss.addColorStop(0, 'rgba(255,255,255,0.55)');
+	gloss.addColorStop(1, 'rgba(255,255,255,0)');
+	ctx.fillStyle = gloss;
+	ctx.fillRect(px, py, pw, ph*0.55);
+	ctx.restore();
+
+	// crisp inner bevel edge
+	roundRectPath(px+1, py+1, pw-2, ph-2, r);
+	ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+	ctx.lineWidth = 1;
+	ctx.stroke();
+}
+
+function drawNumber(nr, cx, cy) {
+	const text = ''+nr;
+	ctx.save();
+	// dark recessed shadow beneath the glyph
+	ctx.fillStyle = 'rgba(0,0,0,0.35)';
+	ctx.fillText(text, cx+2, cy+3);
+	// glossy vertical gradient fill for the raised 3D look
+	const grad = ctx.createLinearGradient(cx, cy-th*0.35, cx, cy+th*0.1);
+	grad.addColorStop(0, numberShades[nr]);
+	grad.addColorStop(1, fgcolors[nr]);
+	ctx.fillStyle = grad;
+	ctx.fillText(text, cx, cy);
+	// thin bright rim on top for an embossed edge
+	ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+	ctx.lineWidth = 1;
+	ctx.strokeText(text, cx, cy-0.6);
+	ctx.restore();
+}
+
+function spawnBurst(cx, cy, color) {
+	for(let i=0; i<8; i++) {
+		const angle = Math.random()*Math.PI*2;
+		const speed = 90 + Math.random()*160;
+		particles.push({
+			type: 'dot', x: cx, y: cy,
+			vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+			gravity: 260, color,
+			life: 400+Math.random()*250, maxLife: 650,
+			size: 2+Math.random()*2.5
+		});
+	}
+	for(let i=0; i<4; i++) { // bright sparks mixed in
+		const angle = Math.random()*Math.PI*2;
+		const speed = 180 + Math.random()*220;
+		particles.push({
+			type: 'dot', x: cx, y: cy,
+			vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
+			gravity: 260, color: 'white',
+			life: 200+Math.random()*150, maxLife: 350,
+			size: 1.2+Math.random()*1.3
+		});
+	}
+}
+
+function spawnRing(cx, cy, color) {
+	particles.push({ type: 'ring', x: cx, y: cy, color, life: 350, maxLife: 350, maxRadius: Math.max(tw,th)*0.7 });
+}
+
+function updateAndDrawParticles(elapsed) {
+	const dtMs = elapsed || 16.666;
+	const dt = dtMs/1000;
+	for(let i=particles.length-1; i>=0; i--) {
+		const p = particles[i];
+		p.life -= dtMs;
+		if(p.life <= 0) { particles.splice(i,1); continue; }
+		const t = p.life/p.maxLife;
+		if(p.type === 'dot') {
+			p.vy += p.gravity*dt;
+			p.x += p.vx*dt;
+			p.y += p.vy*dt;
+			ctx.globalAlpha = Math.max(t,0);
+			ctx.fillStyle = p.color;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, Math.max(p.size*t,0.3), 0, Math.PI*2);
+			ctx.fill();
+		} else if(p.type === 'ring') {
+			const grow = 1-t;
+			ctx.globalAlpha = Math.max(t,0);
+			ctx.strokeStyle = p.color;
+			ctx.lineWidth = 3*t+1;
+			ctx.beginPath();
+			ctx.arc(p.x, p.y, p.maxRadius*grow, 0, Math.PI*2);
+			ctx.stroke();
+		}
+	}
+	ctx.globalAlpha = 1;
 }
 
 function drawBoard(elapsed) {
@@ -61,12 +206,15 @@ function drawBoard(elapsed) {
 				if( progress < 1)
 					countAnimated++;
 			}
-            ctx.fillStyle = bgcolors[t.nr];
-            ctx.fillRect(x*tw+2, y*th-offset+2, tw-2, th-2);
-            ctx.fillStyle = fgcolors[t.nr];
-            ctx.fillText(""+t.nr,x*tw+tw/2,(y*th+th*0.75)-offset);
+			const px = x*tw+3;
+			const py = y*th-offset+3;
+			const pw = tw-6;
+			const ph = th-6;
+			drawTile(px, py, pw, ph, t);
+			drawNumber(t.nr, x*tw+tw/2, y*th+th*0.72-offset);
         }
     }
+	updateAndDrawParticles(elapsed);
 	if(gameOver) {
 		ctx.font= h/10 + "pt Comic Sans MS";
         ctx.fillStyle="white";
@@ -74,8 +222,10 @@ function drawBoard(elapsed) {
         ctx.fillStyle="blue";
 		ctx.fillText("Game Over",w/2,h/2);
 	}
-	if(countAnimated==0)
+	if(countAnimated==0 && particles.length==0) {
 		cancelAnimationFrame(requestAnimationFrameID);
+		animating = false;
+	}
 }
 
 function animate(time) {
@@ -85,29 +235,36 @@ function animate(time) {
 	lastTime=time;
 }
 
-function removeTileAndNeighbors(x, y, nr) {
+function removeTileAndNeighbors(x, y, nr, removed) {
     if(x<0 || x>xTiles-1 || y<0 || y>yTiles-1 || !board[x][y] || board[x][y].nr != nr)
-        return 0;
-    let count=1;
+        return;
+    removed.push({x, y, nr: board[x][y].nr});
     board[x][y] = undefined;
-    count += removeTileAndNeighbors(x+1,y,nr);
-    count += removeTileAndNeighbors(x-1,y,nr);
-    count += removeTileAndNeighbors(x,y+1,nr);
-    count += removeTileAndNeighbors(x,y-1,nr);
-    return count;
+    removeTileAndNeighbors(x+1,y,nr,removed);
+    removeTileAndNeighbors(x-1,y,nr,removed);
+    removeTileAndNeighbors(x,y+1,nr,removed);
+    removeTileAndNeighbors(x,y-1,nr,removed);
 }
 
 function click(x,y) {
   const nr = board[x][y].nr;
-  if( removeTileAndNeighbors(x, y, nr) === 1) {
+  const removed = [];
+  removeTileAndNeighbors(x, y, nr, removed);
+  if( removed.length === 1) {
     board[x][y] = newTile(nr); // if we only clicked on one tile, we restore it, This approach keeps removeTileAndNeighbors simpler.
 		return;
 	}
 	board[x][y] = newTile(nr+1);
 	popSound.currentTime = 0;
 	popSound.play();
+	for(const r of removed)
+		spawnBurst(r.x*tw+tw/2, r.y*th+th/2, bgcolors[r.nr]);
+	spawnRing(x*tw+tw/2, y*th+th/2, fgcolors[nr]);
 	compactBoard();
-	animate();
+	if(!animating) {
+		animating = true;
+		animate();
+	}
 	gameOver=checkEnd();
 }
 
