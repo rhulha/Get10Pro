@@ -28,7 +28,7 @@ export function spawnBurst(cx, cy, color) {
 }
 
 export function spawnRing(cx, cy, color, maxRadius) {
-	particles.push({ type: 'ring', x: cx, y: cy, color, life: 450, maxLife: 450, maxRadius: maxRadius*1.5 });
+	particles.push({ type: 'ring', x: cx, y: cy, color, life: 225, maxLife: 225, maxRadius: maxRadius*1.5 });
 }
 
 export function updateAndDrawParticles(ctx, elapsed) {
