@@ -5,23 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <link rel="icon" href="images/Get10Pro.png" type="image/png" />
 <link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
 <title>Get10 Pro</title>
-<style>
-html, body {
-  width: 100%;
-  height: 100%;
-  margin: 0;
-}
-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-</style>
 </head>
 
 <body bgcolor="black">
 <canvas id="c"></canvas>
+<div id="menu" hidden>
+  <div class="box">
+    <h1>Get 10 Pro</h1>
+    <label>Columns <input id="cols" type="number" min="3" max="30"></label>
+    <label>Rows <input id="rows" type="number" min="3" max="30"></label>
+    <button id="startBtn">Play</button>
+  </div>
+</div>
 <script type="module" src="main.js"></script>
 </body>
 </html>

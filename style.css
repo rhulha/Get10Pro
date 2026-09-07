@@ -1,0 +1,54 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#menu {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  font-family: "Comic Sans MS", sans-serif;
+}
+#menu[hidden] {
+  display: none;
+}
+#menu .box {
+  background: #111;
+  border: 2px solid LawnGreen;
+  border-radius: 12px;
+  padding: 24px 32px;
+  text-align: center;
+  color: white;
+}
+#menu h1 {
+  color: LawnGreen;
+  margin-top: 0;
+}
+#menu label {
+  display: block;
+  margin: 12px 0;
+  font-size: 1.1em;
+}
+#menu input {
+  width: 4em;
+  font-size: 1.1em;
+  text-align: center;
+  margin-left: 8px;
+}
+#menu button {
+  margin-top: 16px;
+  padding: 8px 24px;
+  font-size: 1.1em;
+  background: LawnGreen;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
