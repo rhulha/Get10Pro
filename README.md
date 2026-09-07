@@ -2,9 +2,14 @@
 
 # Get10Pro
 
-Get10Pro is an improved copy of the game "Just Get 10" on Android.  
-I love the game but I didn't like that you had to tap twice to advance the game state.  
-So as a challenge and to play the game faster I reimplemented the game.
+Get10Pro is a fast-paced number puzzle game where your goal is to merge tiles and reach **10**.
+
+## How to Play
+
+* **Click or tap** any tile connected to adjacent tiles (horizontally or vertically) with the same number.
+* The connected tiles instantly merge into the clicked spot, increasing its number by 1.
+* New tiles drop from the top to fill empty spaces.
+* The game ends when there are no adjacent matching tiles left on the board.
 
 <img src="https://rhulha.github.io/Get10Pro/images/Get10Pro.png">
 
