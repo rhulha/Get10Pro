@@ -1,32 +1,34 @@
 export let particles = [];
 
 export function spawnBurst(cx, cy, color) {
-	for(let i=0; i<8; i++) {
+	for(let i=0; i<16; i++) {
 		const angle = Math.random()*Math.PI*2;
-		const speed = 90 + Math.random()*160;
+		const speed = 140 + Math.random()*260;
 		particles.push({
 			type: 'dot', x: cx, y: cy,
 			vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
-			gravity: 260, color,
-			life: 400+Math.random()*250, maxLife: 650,
-			size: 2+Math.random()*2.5
+			gravity: 300, color,
+			life: 450+Math.random()*300, maxLife: 750,
+			size: 3.5+Math.random()*3.5,
+			glow: true
 		});
 	}
-	for(let i=0; i<4; i++) { // bright sparks mixed in
+	for(let i=0; i<10; i++) { // bright sparks mixed in
 		const angle = Math.random()*Math.PI*2;
-		const speed = 180 + Math.random()*220;
+		const speed = 260 + Math.random()*320;
 		particles.push({
 			type: 'dot', x: cx, y: cy,
 			vx: Math.cos(angle)*speed, vy: Math.sin(angle)*speed,
-			gravity: 260, color: 'white',
-			life: 200+Math.random()*150, maxLife: 350,
-			size: 1.2+Math.random()*1.3
+			gravity: 300, color: 'white',
+			life: 250+Math.random()*200, maxLife: 450,
+			size: 1.8+Math.random()*1.8,
+			glow: true
 		});
 	}
 }
 
 export function spawnRing(cx, cy, color, maxRadius) {
-	particles.push({ type: 'ring', x: cx, y: cy, color, life: 350, maxLife: 350, maxRadius });
+	particles.push({ type: 'ring', x: cx, y: cy, color, life: 450, maxLife: 450, maxRadius: maxRadius*1.5 });
 }
 
 export function updateAndDrawParticles(ctx, elapsed) {
@@ -37,23 +39,34 @@ export function updateAndDrawParticles(ctx, elapsed) {
 		p.life -= dtMs;
 		if(p.life <= 0) { particles.splice(i,1); continue; }
 		const t = p.life/p.maxLife;
+		const fade = Math.sqrt(Math.max(t,0)); // stays bright longer, then fades fast at the end
 		if(p.type === 'dot') {
 			p.vy += p.gravity*dt;
 			p.x += p.vx*dt;
 			p.y += p.vy*dt;
-			ctx.globalAlpha = Math.max(t,0);
+			ctx.save();
+			ctx.globalAlpha = fade;
 			ctx.fillStyle = p.color;
+			if(p.glow) {
+				ctx.shadowColor = p.color;
+				ctx.shadowBlur = 10;
+			}
 			ctx.beginPath();
-			ctx.arc(p.x, p.y, Math.max(p.size*t,0.3), 0, Math.PI*2);
+			ctx.arc(p.x, p.y, Math.max(p.size*fade,0.5), 0, Math.PI*2);
 			ctx.fill();
+			ctx.restore();
 		} else if(p.type === 'ring') {
 			const grow = 1-t;
-			ctx.globalAlpha = Math.max(t,0);
+			ctx.save();
+			ctx.globalAlpha = fade;
 			ctx.strokeStyle = p.color;
-			ctx.lineWidth = 3*t+1;
+			ctx.lineWidth = 7*t+2;
+			ctx.shadowColor = p.color;
+			ctx.shadowBlur = 16;
 			ctx.beginPath();
 			ctx.arc(p.x, p.y, p.maxRadius*grow, 0, Math.PI*2);
 			ctx.stroke();
+			ctx.restore();
 		}
 	}
 	ctx.globalAlpha = 1;
